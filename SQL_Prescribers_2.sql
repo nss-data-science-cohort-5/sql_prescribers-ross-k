@@ -216,27 +216,87 @@ FROM cteCard
 	4. Find all counties which had an above-average (for the state) number of overdose deaths in 2017. Report the county name and number of overdose deaths.
 */
 
-
+	;WITH cteStateAvg AS
+	(
+		SELECT DISTINCT od.year,
+			AVG(od.overdose_deaths) as avg_od
+		FROM overdose_deaths od
+		WHERE fipscounty IN
+		(
+			SELECT fipscounty
+			FROM fips_county
+			WHERE state = 'TN'
+				AND year = '2017'
+		)
+		GROUP BY year
+	)
+	SELECT DISTINCT fc.county,
+		o.overdose_deaths
+	FROM fips_county fc
+		INNER JOIN overdose_deaths o
+			ON fc.fipscounty = o.fipscounty
+	WHERE fc.state = 'TN'
+		AND o.year = 2017 
+		AND o.overdose_deaths > (
+									SELECT avg_od
+									FROM cteStateAvg
+								)
+	ORDER BY fc.county
+	;
 
 
 /*
 	5. a. Write a query that finds the total population of Tennessee.
 */	
 
-TO DO
-
-SELECT * FROM fips_county
-SELECT fc.state,
-	p.population
-FROM fips_county fc
-	INNER JOIN population p
-		USING(fips_county)
-WHERE fc.state = 'TN';
+SELECT SUM(population) AS TN_total_pop
+FROM population
+WHERE fipscounty IN
+(
+	SELECT fipscounty
+	FROM fips_county
+	WHERE state = 'TN'
+);
 
 
 /*
     b. Build off of the query that you wrote in part a to write a query that returns for each county that county's name, its population, and the percentage of the total population of Tennessee that is contained in that county.
 */
+
+		TO DO!
+
+
+;WITH cteFips AS
+(	
+	SELECT fipscounty AS fips_code,
+		population AS fips_pop
+	FROM population
+	WHERE fipscounty IN
+	(
+		SELECT fipscounty
+		FROM fips_county
+		WHERE state = 'TN'
+	)
+),
+cteTotalPop AS
+(
+	SELECT SUM(fips_pop) AS TN_total_pop
+	FROM cteFips
+)
+SELECT DISTINCT fc.county,
+	ctfp.fips_pop,
+	ctfp.fips_pop / 
+		(SELECT SUM(fips_pop)
+		 FROM cteTotalPop ctp) AS Population_Pct
+FROM fips_county fc
+	INNER JOIN cteFips ctfp
+		ON fc.fipscounty = ctfp.fips_code
+WHERE state = 'TN'	
+GROUP BY fc.county,
+	ctfp.fips_pop
+ORDER BY fc.county
+;
+
 
 
 	
