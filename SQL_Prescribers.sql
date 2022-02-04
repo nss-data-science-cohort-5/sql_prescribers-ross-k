@@ -196,12 +196,12 @@ ORDER BY drug_cost DESC;
 /*
 	5. a. How many CBSAs are in Tennessee? **Warning:** The cbsa table contains information for all states, not just Tennessee.
 	
-	   A - 6.
+	   A - 10.
 */
 
 SELECT COUNT(DISTINCT cbsa)
 FROM cbsa
-WHERE cbsaname LIKE '%TN';
+WHERE cbsaname LIKE '%TN%';
 
 
 /*
@@ -300,20 +300,14 @@ ORDER BY pn.drug_name;
 	a. First, create a list of all npi/drug_name combinations for pain management specialists (specialty_description = 'Pain Managment') in the city of Nashville (nppes_provider_city = 'NASHVILLE'), where the drug is an opioid (opiod_drug_flag = 'Y'). **Warning:** Double-check your query before running it. You will likely only need to use the prescriber and drug tables.
 */
 
-SELECT pr.npi,
-	pr.nppes_provider_first_name || ' ' || 
-		pr.nppes_provider_last_org_name AS provider_name,
-	d.drug_name
-FROM prescriber pr
-	INNER JOIN prescription pn
-		ON pr.npi = pn.npi
-	INNER JOIN drug d
-		ON pn.drug_name = d.drug_name
-WHERE pr.nppes_provider_city = 'NASHVILLE' 
-	AND pr.specialty_description = 'Pain Management'
-	AND d.opioid_drug_flag = 'Y'
-ORDER BY provider_name DESC;
-
+	-- CONRAD HAD THIS:
+	SELECT npi, drug_name
+	FROM prescriber
+	CROSS JOIN drug
+	WHERE nppes_provider_city = 'NASHVILLE'
+		AND specialty_description = 'Pain Management'
+		AND opioid_drug_flag = 'Y'
+	
 
 /*
     b. Next, report the number of claims per drug per prescriber. Be sure to include all combinations, whether or not the prescriber had any claims. You should report the npi, the drug name, and the number of claims (total_claim_count).
@@ -334,7 +328,6 @@ GROUP BY pr.npi,
 	d.drug_name
 ORDER BY total_claims DESC;
 
-
 	
 	-- FOR TESTING UNASSOCIATED RECORDS
 	SELECT pr.npi AS provider_NPI,
@@ -349,6 +342,22 @@ ORDER BY total_claims DESC;
 		AND pr.nppes_provider_city = 'NASHVILLE' 
 		AND pr.specialty_description = 'Pain Management'	
 	ORDER BY pr.npi DESC;
+
+
+	-- CONRAD HAD THIS:
+	SELECT npi, drug_name, COALESCE(total_claim_count, 0)
+	FROM
+	(
+		SELECT npi, drug_name
+		FROM prescriber
+		CROSS JOIN drug
+		WHERE nppes_provider_city = 'NASHVILLE'
+			AND specialty_description = 'Pain Management'
+			AND opioid_drug_flag = 'Y'
+	) AS a
+		LEFT JOIN prescription
+			USING(npi, drug_name)
+	ORDER BY npi;
 
 
 /*
