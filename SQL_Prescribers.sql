@@ -92,32 +92,33 @@ Anesthesiology, Pain Management, Hand Surgery, AND Surgical Oncology ALL HAVE MO
 
 ;WITH cteOpClaims AS
 (
-SELECT DISTINCT pr.specialty_description AS specialty,
-	SUM(pn.total_claim_count)            AS op_sum
-FROM prescriber pr
-	INNER JOIN prescription pn
-		ON pr.npi = pn.npi
-	INNER JOIN drug d
-		USING(drug_name)
-WHERE opioid_drug_flag = 'Y'
-GROUP BY pr.specialty_description
+	SELECT DISTINCT pr.specialty_description AS specialty,
+		SUM(pn.total_claim_count)            AS op_sum
+	FROM prescriber pr
+		INNER JOIN prescription pn
+			ON pr.npi = pn.npi
+		INNER JOIN drug d
+			USING(drug_name)
+	WHERE opioid_drug_flag = 'Y'
+	GROUP BY pr.specialty_description
 ),
 cteTotalClaims AS 
 (
-SELECT DISTINCT pr.specialty_description AS specialty,
-	SUM(pn.total_claim_count)            AS claim_sum
-FROM prescriber pr
-	INNER JOIN prescription pn
-		ON pr.npi = pn.npi
-	INNER JOIN drug d
-		USING(drug_name)
-GROUP BY pr.specialty_description
+	SELECT DISTINCT pr.specialty_description AS specialty,
+		SUM(pn.total_claim_count)            AS claim_sum
+	FROM prescriber pr
+		INNER JOIN prescription pn
+			ON pr.npi = pn.npi
+		INNER JOIN drug d
+			USING(drug_name)
+	GROUP BY pr.specialty_description
 )
 SELECT DISTINCT tc.specialty,
 	oc.op_sum / tc.claim_sum AS opioid_pct
 FROM cteOpClaims oc
 	INNER JOIN cteTotalClaims tc
 		USING(specialty)
+WHERE oc.op_sum / tc.claim_sum > .5
 ORDER BY opioid_pct DESC;
 
 
@@ -140,7 +141,7 @@ ORDER BY drug_cost DESC;
 /*
        b. Which drug (generic_name) has the hightest total cost per day? **Bonus: Round your cost per day column to 2 decimal places. Google ROUND to see how this works.
 	   
-	   
+	  A - C1 Esterase Inhibitor at $3495.22 per day (?!?). 
 */
 
 SELECT DISTINCT d.generic_name, 
@@ -175,7 +176,7 @@ ORDER BY drug_name;
 
 ;WITH cteDrugType AS
 (
-	SELECT DISTINCT drug_name,
+	SELECT DISTINCT drug_name,	-- SOME DRUGS ARE COUNTED TWICE, BOTH AS OPIOIDS AND NON-OPIOIDS - OPIOIDS CRUSH EVERYTHING ELSE REGARDLESS
 		CASE WHEN opioid_drug_flag = 'Y'     THEN 'opioid'
 			 WHEN antibiotic_drug_flag = 'Y' THEN 'antibiotic'
 			 ELSE 'neither'
@@ -218,10 +219,34 @@ WHERE cbsaname LIKE '%TN%';
 		INNER JOIN population p
 			ON fc.fipscounty = p.fipscounty
 	WHERE fc.state = 'TN'
-		AND cbsaname LIKE '%TN'
+		AND cbsaname LIKE '%TN%'
 	GROUP BY c.cbsaname
 	ORDER BY pop DESC;
 
+
+
+	-- BRYAN HAD THIS TO SHOW ONLY THE HIGHEST AND LOWEST VALUES
+	select *
+	from 
+	(
+		select cbsa.cbsa, sum(population) total_population
+	      from cbsa
+	               inner join population p on cbsa.fipscounty = p.fipscounty
+	      group by cbsa.cbsa
+	      order by total_population desc
+	      limit 1
+	) sq1
+	union
+	select *
+	from 
+	(
+		select cbsa.cbsa, sum(population) total_population
+	      from cbsa
+	               inner join population p on cbsa.fipscounty = p.fipscounty
+	      group by cbsa.cbsa
+	      order by total_population asc
+	      limit 1
+	) sq1
 
 
 /*
